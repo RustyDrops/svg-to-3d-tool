@@ -116,6 +116,13 @@
       </select>
     </div>
     <div>
+      <label for="sampleSelect">Or load a sample scene</label>
+      <select id="sampleSelect">
+        <option value="">Choose a sample</option>
+        <option value="layered-cottage">Layered paper cottage (animated, layered)</option>
+      </select>
+    </div>
+    <div>
       <label for="svgText">SVG markup, or bare path data (a d attribute value)</label>
       <textarea id="svgText" spellcheck="false" placeholder="Paste SVG markup here, or path data such as M10,10 L90,10 L50,90 Z"></textarea>
     </div>
@@ -126,6 +133,14 @@
     <div class="row">
       <input type="checkbox" id="bevelCheck" checked>
       <label for="bevelCheck">Bevel edges</label>
+    </div>
+    <div class="row">
+      <input type="checkbox" id="layeredCheck">
+      <label for="layeredCheck">Layered scene (thin sheets, stacked in order)</label>
+    </div>
+    <div class="row">
+      <input type="checkbox" id="animCheck" checked>
+      <label for="animCheck">Animate (data-anim / paper classes)</label>
     </div>
     <div>
       <label for="textureSelect">Texture set</label>
@@ -140,6 +155,7 @@
     <div class="row">
       <button id="pngBtn" class="secondary">Export PNG</button>
       <button id="glbBtn" class="secondary">Export GLB</button>
+      <button id="recordBtn" class="secondary">Record animation (WebM)</button>
     </div>
     <div>
       <label>Add a primitive shape</label>
@@ -268,6 +284,7 @@ function addPart(name, group) {
   const part = { id: ++partSeq, name: name || ('part ' + partSeq), group, materialsCloned: false };
   parts.push(part);
   partsRoot.add(group);
+  refreshAnimPivots();
   selectPart(part.id);
   return part;
 }
@@ -345,6 +362,58 @@ function applyPartColour(part, hex) {
   });
 }
 
+// Animation engine: pivots created by the converter for elements with
+// data-anim (or a known paper class: stars, moon, hills, trees, halo).
+// Motions are computed in the model's local SVG units from each pivot's
+// recorded home position, so turning animation off restores the exact
+// static model and exports stay correct.
+let animPivots = [];
+function refreshAnimPivots() {
+  animPivots = [];
+  partsRoot.traverse(o => { if (o.userData && o.userData.anim) animPivots.push(o); });
+}
+function animPose(pivot, t) {
+  const h = pivot.userData.home, ph = pivot.userData.phase || 0;
+  const pose = { x: h.x, y: h.y, z: h.z, rz: 0, s: 1 };
+  switch (pivot.userData.anim) {
+    case 'drift': pose.x = h.x + Math.sin(t * 0.45 + ph) * 14; break;
+    case 'bob': pose.y = h.y + (Math.sin(t * 0.9 + ph) * 0.5 + 0.5) * 10; break;
+    case 'sway': pose.rz = Math.sin(t * 1.1 + ph) * 0.028; break;
+    case 'twinkle': pose.s = 1 + Math.sin(t * 2.2 + ph) * 0.18; break;
+    case 'pulse': pose.s = 1 + Math.sin(t * 3.0 + ph) * 0.13; break;
+    case 'flicker': pose.s = 1 + (Math.sin(t * 11 + ph) + Math.sin(t * 17.3 + ph) * 0.6) * 0.045; break;
+  }
+  return pose;
+}
+function applyAnimPose(pivot, pose) {
+  pivot.position.set(pose.x, pose.y, pose.z);
+  pivot.rotation.set(0, 0, pose.rz);
+  pivot.scale.setScalar(pose.s);
+}
+function resetAnimPivots() { for (const pv of animPivots) applyAnimPose(pv, animPose(pv, 0) && { x: pv.userData.home.x, y: pv.userData.home.y, z: pv.userData.home.z, rz: 0, s: 1 }); }
+// Build a looping glTF animation clip from the same pose functions, so
+// Export GLB can carry the animation into Blender and game engines.
+function buildAnimClip(duration) {
+  duration = duration || 6;
+  const times = [];
+  for (let i = 0; i <= 12; i++) times.push(duration * i / 12);
+  const tracks = [];
+  const q = new THREE.Quaternion(), e = new THREE.Euler();
+  for (const pv of animPivots) {
+    const pos = [], rot = [], scl = [];
+    for (const t of times) {
+      const pose = animPose(pv, t);
+      pos.push(pose.x, pose.y, pose.z);
+      e.set(0, 0, pose.rz); q.setFromEuler(e); rot.push(q.x, q.y, q.z, q.w);
+      scl.push(pose.s, pose.s, pose.s);
+    }
+    tracks.push(new THREE.VectorKeyframeTrack(pv.name + '.position', times, pos));
+    tracks.push(new THREE.QuaternionKeyframeTrack(pv.name + '.quaternion', times, rot));
+    tracks.push(new THREE.VectorKeyframeTrack(pv.name + '.scale', times, scl));
+  }
+  return tracks.length ? new THREE.AnimationClip('scene', duration, tracks) : null;
+}
+
 function addPrimitive(kind) {
   let geo = null, base = '';
   switch (kind) {
@@ -392,7 +461,8 @@ function currentOptions() {
   return {
     depthMultiplier: parseFloat(document.getElementById('depthRange').value) || 1,
     bevel: document.getElementById('bevelCheck').checked,
-    flatTextures: document.getElementById('textureSelect').value === 'flat'
+    flatTextures: document.getElementById('textureSelect').value === 'flat',
+    layered: document.getElementById('layeredCheck').checked
   };
 }
 
@@ -414,6 +484,7 @@ function showResult(result) {
   const s = result.stats;
   statsEl.textContent =
     'Elements: ' + s.elements + '  Meshes: ' + s.meshes +
+    (s.animElements ? '  Animated: ' + s.animElements : '') +
     '  Triangles: ' + s.triangles + '  NaN vertices: ' + s.nanVertices;
   warningsEl.textContent = result.warnings.length
     ? 'Warnings:\n' + result.warnings.map(w => '- ' + w).join('\n')
@@ -528,11 +599,23 @@ async function main() {
     camera.updateProjectionMatrix();
   });
 
+  const animClock = new THREE.Clock();
+  let animWasOn = false;
   (function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    const animOn = document.getElementById('animCheck').checked && animPivots.length > 0;
+    if (animOn) {
+      const t = animClock.getElapsedTime();
+      for (const pv of animPivots) applyAnimPose(pv, animPose(pv, t));
+      animWasOn = true;
+    } else if (animWasOn) {
+      resetAnimPivots();
+      animWasOn = false;
+    }
     renderer.render(scene, camera);
   })();
+  window.__sceneDebug = { partsRoot, refreshAnimPivots, buildAnimClip, getAnimPivots: () => animPivots };
 
   document.getElementById('depthRange').addEventListener('input', e => {
     document.getElementById('depthVal').textContent = parseFloat(e.target.value).toFixed(2);
@@ -554,6 +637,30 @@ async function main() {
       errorsEl.textContent = String(err && err.message ? err.message : err);
     }
   });
+  function clearAllParts() {
+    for (const part of parts) { partsRoot.remove(part.group); disposeObject(part.group); }
+    parts.length = 0;
+    selectedPartId = null;
+    refreshAnimPivots();
+    refreshPartsList();
+    syncPartControls();
+  }
+  document.getElementById('sampleSelect').addEventListener('change', async e => {
+    if (!e.target.value) return;
+    try {
+      const res = await fetch('samples/' + e.target.value + '.svg');
+      if (!res.ok) throw new Error('Could not fetch samples/' + e.target.value + '.svg (HTTP ' + res.status + ')');
+      const text = await res.text();
+      svgTextEl.value = text;
+      document.getElementById('layeredCheck').checked = true;
+      document.getElementById('textureSelect').value = 'flat';
+      document.getElementById('bevelCheck').checked = false;
+      clearAllParts();
+      build(text, e.target.value);
+    } catch (err) {
+      errorsEl.textContent = String(err && err.message ? err.message : err);
+    }
+  });
   document.getElementById('buildBtn').addEventListener('click', () => {
     if (!svgTextEl.value.trim()) { errorsEl.textContent = 'Paste SVG markup or path data first.'; return; }
     build(svgTextEl.value, currentName);
@@ -569,8 +676,27 @@ async function main() {
       partsRoot,
       res => download(new Blob([res], { type: 'model/gltf-binary' }), 'scene.glb'),
       err => { errorsEl.textContent = 'GLB export failed: ' + (err && err.message ? err.message : err); },
-      { binary: true }
+      { binary: true, animations: (document.getElementById('animCheck').checked && animPivots.length) ? [buildAnimClip(6)] : [] }
     );
+  });
+  document.getElementById('recordBtn').addEventListener('click', () => {
+    if (!parts.length) return;
+    const btn = document.getElementById('recordBtn');
+    const stream = renderer.domElement.captureStream(30);
+    const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(m => {
+      try { return window.MediaRecorder && MediaRecorder.isTypeSupported(m); } catch (err) { return false; }
+    });
+    if (!mime) { errorsEl.textContent = 'MediaRecorder WebM is not supported in this browser.'; return; }
+    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+    const chunks = [];
+    rec.ondataavailable = ev => { if (ev.data && ev.data.size) chunks.push(ev.data); };
+    rec.onstop = () => {
+      download(new Blob(chunks, { type: 'video/webm' }), 'scene-animation.webm');
+      btn.disabled = false; btn.textContent = 'Record animation (WebM)';
+    };
+    btn.disabled = true; btn.textContent = 'Recording 6s...';
+    rec.start(250);
+    setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 6000);
   });
 
   // Scene builder wiring: primitives, grid toggle, part transforms.
@@ -618,6 +744,7 @@ async function main() {
     partsRoot.remove(part.group);
     disposeObject(part.group);
     parts.splice(parts.indexOf(part), 1);
+    refreshAnimPivots();
     selectedPartId = parts.length ? parts[parts.length - 1].id : null;
     refreshPartsList();
     syncPartControls();

@@ -9,21 +9,6 @@ Built for the TTRPGAI token and prop library, and for general
 No build step, no server-side code, no image generation, no external
 image files. All textures are drawn on canvas in code.
 
-## Gallery
-
-Knight with engraved breastplate lines, gears with spoke holes, a
-revolved vase, sphere-mode orbs, a tube vine, and a composed scene:
-
-![Knight](docs/images/knight.png)
-![Gears](docs/images/gears.png)
-![Revolved vase](docs/images/vase-revolve.png)
-![Sphere orbs](docs/images/orbs-sphere.png)
-![Tube vine](docs/images/vine-tube.png)
-![Scene builder](docs/images/scene-builder.png)
-
-The prompts that built this tool, and prompts for authoring SVGs for
-it, are in [PROMPTS.md](PROMPTS.md).
-
 ## Run it
 
 Serve this folder over HTTP (module scripts do not load from file://):
@@ -92,6 +77,34 @@ Without it, everything extrudes as above.
 
 Using a mode on the wrong kind of element warns and falls back to
 extrusion.
+
+## Layered scenes and animation (v9)
+
+A flat scene SVG can become a 3D paper diorama, and it can move.
+
+- **Layered mode**: tick "Layered scene" in the app, or put
+  `data-layered="true"` on the root `<svg>`. Every element becomes a
+  thin sheet (6 units thick unless it has its own `data-depth`) and
+  the sheets stack in document order with a 10-unit z gap, back
+  element furthest back. Depth multiplier scales thickness and gap.
+- **Animation**: add `data-anim` to any element or group (inherited):
+  `drift` (sideways slide), `bob` (rise and settle), `sway` (rock
+  around the element's bottom centre), `twinkle` and `pulse` (scale
+  pulse), `flicker` (fast small scale jitter, for candle windows).
+  The paper classes from the layered-paper set map automatically:
+  `stars` twinkle, `moon` bobs, `hills` drift, `trees` sway, `halo`
+  pulses. Animated elements are built on a pivot at their bounding
+  box bottom centre, so the static model and exports stay exact when
+  animation is off.
+- **Outputs**: the viewer animates live (Animate checkbox). Export
+  GLB carries a looping 6-second animation clip built from the same
+  motions when Animate is on (verified by parsing the exported GLB
+  back: 1 animation, 96 channels for the sample). Record animation
+  saves a 6-second WebM of the live view.
+- **Sample**: "Layered paper cottage" in the sample dropdown loads
+  `samples/layered-cottage.svg`, replaces the scene, and builds the
+  diorama: 39 elements, 32 of them animated (6 twinkle, 7 drift,
+  15 sway, 1 bob, 1 pulse, 2 flicker), 0 warnings.
 
 ## Scene building in the app
 

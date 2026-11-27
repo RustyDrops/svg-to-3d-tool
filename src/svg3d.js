@@ -38,7 +38,10 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import { makeWood, makeMetal, makeStone } from './textures.js';
 
 const DRAWABLE = ['path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon'];
-const INHERITED = ['data-depth', 'data-material', 'data-role', 'data-mode', 'fill', 'stroke', 'stroke-width', 'fill-rule'];
+const INHERITED = ['data-depth', 'data-material', 'data-role', 'data-mode', 'data-anim', 'fill', 'stroke', 'stroke-width', 'fill-rule'];
+// Class tokens that map to a viewer animation (see index.html anim engine).
+// An explicit data-anim attribute (inherited) always wins over classes.
+const CLASS_ANIM = { stars: 'twinkle', moon: 'bob', hills: 'drift', trees: 'sway', halo: 'pulse' };
 const ALWAYS_CLOSED = ['rect', 'circle', 'ellipse', 'polygon'];
 // Colour for an element that is filled but carries no fill colour of its
 // own (absent fill attribute, no data-material). The SVG spec default is
@@ -84,6 +87,18 @@ function resolveDescriptor(el) {
     if (disp === 'none') desc.hidden = true;
   }
   desc.inDefs = chain.some(n => n.tagName.toLowerCase() === 'defs');
+  // Animation name: explicit data-anim first, else the innermost class
+  // token in the chain that CLASS_ANIM knows (halo on a window circle
+  // beats the cottage group around it, and so on).
+  if (!desc['data-anim']) {
+    for (let i = chain.length - 1; i >= 0 && !desc['data-anim']; i--) {
+      const cls = chain[i].getAttribute && chain[i].getAttribute('class');
+      if (!cls) continue;
+      for (const tok of cls.split(/\s+/)) {
+        if (CLASS_ANIM[tok]) { desc['data-anim'] = CLASS_ANIM[tok]; break; }
+      }
+    }
+  }
   desc.transform = chain
     .map(n => n.getAttribute('transform'))
     .filter(Boolean)
@@ -610,6 +625,34 @@ function countNaN(geometry) {
   return n;
 }
 
+// Add one element's meshes to the model. When the element carries an
+// animation name, its meshes are wrapped in a pivot group placed at the
+// element bounding-box bottom centre (x centre for bob/pulse), with the
+// geometry shifted so the pivot sits at the group origin. The viewer
+// animates the pivot; the static position is pivot.position itself, so
+// exports stay correct when animation is off. userData.home records the
+// rest transform and a per-element phase.
+let animSeq = 0;
+function addElementMeshes(inner, meshes, p, stats) {
+  const anim = String(p.desc['data-anim'] || '').trim().toLowerCase();
+  if (!anim || !meshes.length) { for (const m of meshes) inner.add(m); return; }
+  const box = new THREE.Box3();
+  for (const m of meshes) { m.geometry.computeBoundingBox(); box.union(m.geometry.boundingBox); }
+  const cx = (box.min.x + box.max.x) / 2;
+  const pivot = new THREE.Group();
+  pivot.name = 'anim_' + (animSeq++) + '_' + anim;
+  pivot.position.set(cx, box.min.y, 0);
+  for (const m of meshes) {
+    m.geometry.translate(-cx, -box.min.y, 0);
+    pivot.add(m);
+  }
+  pivot.userData.anim = anim;
+  pivot.userData.phase = (p.index * 0.83) % (Math.PI * 2);
+  pivot.userData.home = { x: cx, y: box.min.y, z: 0 };
+  inner.add(pivot);
+  stats.animElements++;
+}
+
 // Main entry point.
 // svgText: full SVG markup.
 // options: { defaultDepth, depthMultiplier, bevel, flatTextures,
@@ -623,10 +666,13 @@ export function buildFromSVG(svgText, options = {}) {
     bevel: true,
     flatTextures: false,
     materialOverrides: null,
+    layered: false,
+    layerGap: 10,
+    paperDepth: 6,
     ...options
   };
   const warnings = [];
-  const stats = { elements: 0, meshes: 0, triangles: 0, nanVertices: 0 };
+  const stats = { elements: 0, meshes: 0, triangles: 0, nanVertices: 0, animElements: 0 };
   const inner = new THREE.Group();
 
   let doc;
@@ -647,6 +693,10 @@ export function buildFromSVG(svgText, options = {}) {
     return { group: inner, warnings, stats };
   }
   const viewBox = svgEl.getAttribute('viewBox') || '0 0 100 100';
+  // Layered scenes (opt-in: options.layered or data-layered="true" on
+  // the root svg): every element becomes a thin paper sheet, stacked in
+  // document order with a z gap between sheets, like a paper diorama.
+  const layered = !!opts.layered || String(svgEl.getAttribute('data-layered') || '').toLowerCase() === 'true';
 
   const elements = [];
   const walker = svgEl.querySelectorAll(DRAWABLE.join(','));
@@ -660,8 +710,10 @@ export function buildFromSVG(svgText, options = {}) {
   const prepared = elements.map((el, index) => {
     const desc = resolveDescriptor(el);
     const rawDepth = parseFloat(desc['data-depth']);
-    const depth = (Number.isFinite(rawDepth) ? rawDepth : opts.defaultDepth) * opts.depthMultiplier;
-    return { el, index, desc, depth, tag: el.tagName.toLowerCase() };
+    const fallbackDepth = layered ? opts.paperDepth : opts.defaultDepth;
+    const depth = (Number.isFinite(rawDepth) ? rawDepth : fallbackDepth) * opts.depthMultiplier;
+    const zBase = layered ? index * opts.layerGap * opts.depthMultiplier : 0;
+    return { el, index, desc, depth, zBase, tag: el.tagName.toLowerCase() };
   });
   let baseDepth = 0;
   for (const p of prepared) {
@@ -839,15 +891,18 @@ export function buildFromSVG(svgText, options = {}) {
         }
       }
       if (modeGeos) {
+        const made = [];
         for (const geo of modeGeos) {
+          if (p.zBase) geo.translate(0, 0, p.zBase);
           stats.nanVertices += countNaN(geo);
           const pos = geo.attributes.position;
           stats.triangles += Math.round((geo.index ? geo.index.count : pos.count) / 3);
           const mesh = new THREE.Mesh(geo, material);
           mesh.name = label;
-          inner.add(mesh);
+          made.push(mesh);
           stats.meshes++;
         }
+        addElementMeshes(inner, made, p, stats);
         continue;
       }
 
@@ -886,6 +941,7 @@ export function buildFromSVG(svgText, options = {}) {
         zStart = Math.max(0, (baseDepth - p.depth) / 2);
       }
 
+      const madeMeshes = [];
       for (const shape of shapes) {
         const bb = bboxOf(shape.getPoints(12).map(v => ({ x: v.x, y: v.y })));
         const minDim = Math.min(bb.w, bb.h);
@@ -906,15 +962,16 @@ export function buildFromSVG(svgText, options = {}) {
           bevelSegments: 2,
           curveSegments: 24
         });
-        geo.translate(0, 0, zStart);
+        geo.translate(0, 0, zStart + p.zBase);
         stats.nanVertices += countNaN(geo);
         const pos = geo.attributes.position;
         stats.triangles += Math.round((geo.index ? geo.index.count : pos.count) / 3);
         const mesh = new THREE.Mesh(geo, material);
         mesh.name = label;
-        inner.add(mesh);
+        madeMeshes.push(mesh);
         stats.meshes++;
       }
+      addElementMeshes(inner, madeMeshes, p, stats);
     } catch (err) {
       warnings.push(label + ': failed to build (' + (err && err.message ? err.message : err) + '), skipped.');
     }

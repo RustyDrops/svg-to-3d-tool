@@ -129,3 +129,12 @@ Stress set: 6 of 6 pass at v6. Tool version is now v6.
   exported scene.glb 371,000 bytes, 5 meshes, 12 nodes, parses as glTF.
 - Regression: frozen exam at v7 identical stats to v4 on all 8 cases,
   e2 render byte-identical. Tool version is now v8.
+
+## v9 (2026-11-26): layered scenes + animation
+One lever set, all opt-in: data-layered / Layered checkbox (thin
+sheets stacked in document order), data-anim + paper-class animation
+pivots in the converter, live animation engine, animated GLB export
+and WebM recording in the app, layered-cottage sample. Exam e1 and e2
+renders byte-identical to v1/v4. Sample verified headless: 32
+animated elements, viewer frames differ over time, exported GLB
+parses back with 1 animation / 96 channels.
