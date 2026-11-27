@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 140">
+<path data-depth="26" data-material="copper" fill="#b87333" fill-rule="evenodd" d="M20,130 L20,10 L62,10 C92,10 104,28 104,48 C104,66 94,80 76,85 L108,130 L84,130 L54,86 L42,86 L42,130 Z M42,64 L60,64 C74,64 82,58 82,47 C82,36 74,31 60,31 L42,31 Z"/>
+<path data-depth="26" data-material="copper" fill="#b87333" fill-rule="evenodd" d="M140,130 L172,10 L196,10 L228,130 L205,130 L198,102 L170,102 L163,130 Z M184,38 L192,82 L176,82 Z"/>
+</svg>

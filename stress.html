@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stress harness</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1000px; height: 650px; overflow: hidden; background: #1b1e26; color: #eef1f6;
+         font-family: Arial, Helvetica, sans-serif; display: flex; }
+  #flat { width: 260px; padding: 26px 20px; background: #242833; display: flex; flex-direction: column; align-items: center; }
+  #flat h2 { font-size: 16px; margin-bottom: 14px; letter-spacing: .04em; }
+  #flat p { font-size: 12.5px; line-height: 1.5; color: #b9c0cf; margin-top: 14px; text-align: center; }
+  #flatSvg svg { width: 210px; height: auto; display: block; }
+  #stage { flex: 1; position: relative; }
+  #stage h2 { position: absolute; top: 22px; left: 0; right: 0; text-align: center; font-size: 16px; letter-spacing: .04em; z-index: 2; }
+  #labels { position: absolute; bottom: 58px; left: 0; right: 0; display: flex; z-index: 2; }
+  #labels span { flex: 1; text-align: center; font-size: 12px; color: #b9c0cf; font-weight: bold; }
+  canvas { display: block; }
+</style>
+<script>
+  window.__examErrors = [];
+  window.addEventListener('error', e => window.__examErrors.push(String(e.message || e.error)));
+  const origErr = console.error;
+  console.error = function () { window.__examErrors.push(Array.prototype.map.call(arguments, String).join(' ')); origErr.apply(console, arguments); };
+</script>
+<script type="importmap">
+{ "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/addons/" } }
+</script>
+</head>
+<body>
+  <div id="flat"><h2>FLAT SVG</h2><div id="flatSvg"></div><p id="flatCaption"></p></div>
+  <div id="stage"><h2>EXTRUDED 3D VOLUME</h2><div id="labels"><span>turned left</span><span>front</span><span>turned right</span></div></div>
+<script type="module">
+import * as THREE from 'three';
+import { buildFromSVG } from './src/svg3d.js';
+
+const params = new URLSearchParams(location.search);
+const file = params.get('svg');
+const caption = params.get('cap') || file;
+
+const stage = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(740, 650);
+renderer.setPixelRatio(1);
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1b1e26);
+const camera = new THREE.PerspectiveCamera(38, 740 / 650, 0.1, 100);
+camera.position.set(0, 0.25, 10);
+camera.lookAt(0, 0, 0);
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(3, 4, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0x88aaff, 0.9); rim.position.set(-4, 1, -3); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(0, -1, 4); scene.add(fill);
+
+try {
+  const text = await (await fetch(file)).text();
+  document.getElementById('flatSvg').innerHTML = text;
+  document.getElementById('flatCaption').textContent = caption;
+  const result = buildFromSVG(text, {});
+  const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(12, 7), new THREE.MeshBasicMaterial({ color: 0xe8a33d }));
+  backdrop.position.set(0, 0.1, -2.4);
+  scene.add(backdrop);
+  [[-2.55, -0.62], [0, 0], [2.55, 0.62]].forEach(([x, ry]) => {
+    const copy = result.group.clone();
+    copy.position.x = x;
+    copy.rotation.y = ry;
+    scene.add(copy);
+  });
+  renderer.render(scene, camera);
+  const box = new THREE.Box3().setFromObject(result.group);
+  window.__examResult = {
+    meshes: result.stats.meshes, triangles: result.stats.triangles,
+    elements: result.stats.elements, nanVertices: result.stats.nanVertices,
+    warnings: result.warnings.slice(), errors: window.__examErrors.slice(),
+    bboxFinite: [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].every(Number.isFinite)
+  };
+} catch (err) {
+  window.__examErrors.push(String(err && err.message ? err.message : err));
+  window.__examResult = { meshes: 0, triangles: 0, warnings: [], errors: window.__examErrors.slice(), bboxFinite: false };
+}
+window.__ready = true;
+</script>
+</body>
+</html>

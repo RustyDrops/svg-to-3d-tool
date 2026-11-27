@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160">
+<path data-depth="22" data-material="gold" fill="#d9b45b" fill-rule="evenodd" d="M60,20 A60,60 0 1 1 59.9,20 Z M60,48 A32,32 0 1 0 60.1,48 Z"/>
+<path data-depth="14" data-material="iron" fill="#565d66" fill-rule="evenodd" d="M150,30 L225,30 L225,130 L150,130 Z M187,58 A13,13 0 1 1 186.9,58 Z M181,66 L193,66 L197,102 L177,102 Z"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 120">
+<path data-depth="18" data-material="wood" fill="#8a5a2e" d="M10,20 C60,4 120,4 175,16 A28,28 0 1 1 232,44 C238,66 226,84 205,88 C160,98 120,84 84,92 C54,98 26,92 10,76 Z"/>
+<circle data-depth="30" data-material="gold" data-role="raised" cx="52" cy="48" r="11" fill="#d9b45b"/>
+<circle data-depth="30" data-material="gold" data-role="raised" cx="128" cy="44" r="11" fill="#d9b45b"/>
+<circle data-depth="30" data-material="gold" data-role="raised" cx="196" cy="52" r="11" fill="#d9b45b"/>
+</svg>

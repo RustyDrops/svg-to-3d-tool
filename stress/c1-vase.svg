@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 240">
+  <!-- half profile for revolve: the left edge (x=60) is the axis; the outline
+       runs up the outside, over the lip, and back down the axis -->
+  <path data-mode="revolve" data-material="copper" fill="#b87333" d="M60,232 L102,232 C102,222 96,214 88,204 C74,186 68,160 70,128 C72,98 78,74 76,56 C75,46 80,40 88,36 L88,26 L60,26 Z"/>
+</svg>

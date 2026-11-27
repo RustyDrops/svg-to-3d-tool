@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 250">
+<path data-depth="36" data-material="stone" fill="#7a8699" fill-rule="evenodd" d="M20,245 L20,45 L45,45 L45,25 L65,25 L65,45 L90,45 L90,25 L110,25 L110,45 L135,45 L135,25 L155,25 L155,45 L180,45 L180,245 Z M70,235 L70,175 A30,30 0 0 1 130,175 L130,235 Z M45,130 L45,105 A10,10 0 0 1 65,105 L65,130 Z M135,130 L135,105 A10,10 0 0 1 155,105 L155,130 Z"/>
+<g data-depth="6" data-material="iron" data-role="recessed" fill="#4a3826">
+<rect x="77" y="168" width="5" height="66"/><rect x="89" y="152" width="5" height="82"/>
+<rect x="101" y="152" width="5" height="82"/><rect x="113" y="162" width="5" height="72"/>
+<rect x="71" y="196" width="58" height="5"/><rect x="71" y="218" width="58" height="5"/>
+</g>
+<path data-depth="46" data-material="gold" data-role="raised" fill="#d9b45b" d="M100,62 L104.7,74.6 L118,75 L107.6,83.2 L111.2,96 L100,88.8 L88.8,96 L92.4,83.2 L82,75 L95.3,74.6 Z"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 220">
+  <!-- extruded stone arch block the vine wraps -->
+  <path data-depth="26" data-material="stone" fill="#7a8699" d="M30,190 L30,60 C30,40 46,28 66,28 L194,28 C214,28 230,40 230,60 L230,190 L196,190 L196,84 L64,84 L64,190 Z"/>
+  <!-- vine as a round tube following an S curve, with a spiral tendril -->
+  <path data-mode="tube" data-depth="26" stroke="#3e7d3a" stroke-width="11" fill="none" stroke-linecap="round" d="M14,206 C60,190 44,140 84,128 C124,116 118,66 162,56 C196,48 214,70 244,52"/>
+  <path data-mode="tube" data-depth="26" stroke="#4c8a45" stroke-width="7" fill="none" stroke-linecap="round" d="M238,58 C252,72 246,90 232,90 C220,90 216,78 224,72 C230,68 236,72 235,78"/>
+  <!-- leaves as small extruded ellipses along the vine -->
+  <g data-depth="36" data-material="gem" fill="#4c8a45">
+    <ellipse cx="52" cy="158" rx="14" ry="8" transform="rotate(-30 52 158)"/>
+    <ellipse cx="112" cy="112" rx="14" ry="8" transform="rotate(20 112 112)"/>
+    <ellipse cx="186" cy="66" rx="13" ry="7" transform="rotate(-18 186 66)"/>
+  </g>
+</svg>

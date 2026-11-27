@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280">
+  <!-- cape behind everything -->
+  <path data-depth="10" data-material="gem" fill="#5b2a6e" d="M96,66 C60,80 44,130 48,196 C50,232 44,258 40,272 L104,272 C100,230 102,190 106,150 C108,110 106,84 96,66 Z"/>
+  <!-- plume -->
+  <path data-depth="16" data-material="gem" fill="#c22e3a" d="M118,8 C100,2 78,8 70,24 C84,20 92,26 90,38 C100,28 112,26 120,32 C118,22 118,14 118,8 Z"/>
+  <!-- helmet with visor slits -->
+  <path data-depth="26" data-material="steel" fill="#9aa4ae" fill-rule="evenodd" d="M84,96 C82,66 92,40 118,34 C144,40 154,66 152,96 L146,118 L90,118 Z M96,84 L140,84 L140,90 L96,90 Z M96,96 L140,96 L140,101 L96,101 Z"/>
+  <!-- torso armour -->
+  <path data-depth="28" data-material="steel" fill="#8b95a1" d="M84,122 C100,114 136,114 152,122 L158,196 C158,210 150,218 142,222 L94,222 C86,218 78,210 78,196 Z"/>
+  <!-- breastplate detail lines, recessed strokes -->
+  <g data-depth="8" data-role="recessed" stroke="#5d666f" stroke-width="3.5" fill="none">
+    <path d="M118,124 L118,214"/>
+    <path d="M86,150 C102,158 134,158 150,150"/>
+    <path d="M88,182 C104,190 132,190 148,182"/>
+  </g>
+  <!-- shield with cross emblem and border -->
+  <path data-depth="34" data-material="iron" data-role="raised" fill="#4a5560" d="M150,140 L196,152 L196,196 C196,224 178,244 173,250 C168,244 150,224 150,196 Z"/>
+  <path data-depth="40" data-material="gold" data-role="raised" fill="#d9b45b" d="M168,166 L178,166 L178,178 L190,178 L190,188 L178,188 L178,206 L168,206 L168,188 L156,188 L156,178 L168,178 Z"/>
+  <!-- sword arm and sword -->
+  <path data-depth="22" data-material="steel" fill="#8b95a1" d="M152,126 C168,132 178,146 182,162 L168,170 C162,156 154,146 146,140 Z"/>
+  <path data-depth="18" data-material="steel" fill="#c7ced6" d="M176,158 L226,96 L234,88 L230,104 L186,168 Z"/>
+  <path data-depth="24" data-material="gold" data-role="raised" fill="#d9b45b" d="M160,168 L186,152 L192,160 L166,176 Z"/>
+  <!-- legs -->
+  <path data-depth="24" data-material="iron" fill="#6a7078" d="M88,224 L112,224 L110,272 L86,272 Z M124,224 L148,224 L150,272 L126,272 Z"/>
+  <!-- belt -->
+  <path data-depth="32" data-material="copper" data-role="raised" fill="#b87333" d="M80,214 L156,214 L156,226 L80,226 Z"/>
+  <rect data-depth="38" data-material="gold" data-role="raised" x="110" y="212" width="16" height="16" fill="#d9b45b"/>
+</svg>

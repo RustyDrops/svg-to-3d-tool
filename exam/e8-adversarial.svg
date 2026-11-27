@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 200">
+<g data-depth="16" data-material="steel" fill="#5b7fa6">
+<circle cx="55" cy="60" r="30"/><circle cx="85" cy="60" r="30"/><circle cx="70" cy="86" r="30"/>
+</g>
+<path data-depth="16" data-material="copper" fill="#b87333" d="M140,30 L190,30 L190,80 L140,80"/>
+<path data-depth="24" data-material="gold" data-role="raised" fill="#d9b45b" d="M222,28 L223.2,31.4 L226.8,31.6 L224,33.8 L224.9,37.3 L222,35.4 L219.1,37.3 L220,33.8 L217.2,31.6 L220.8,31.4 Z"/>
+<g data-depth="10"><circle cx="150" cy="130" r="4.5" fill="#c2556e"/><circle cx="166" cy="130" r="4.5" fill="#c2556e"/><circle cx="182" cy="130" r="4.5" fill="#c2556e"/><circle cx="198" cy="130" r="4.5" fill="#c2556e"/><circle cx="214" cy="130" r="4.5" fill="#c2556e"/><circle cx="230" cy="130" r="4.5" fill="#c2556e"/><circle cx="150" cy="146" r="4.5" fill="#c2556e"/><circle cx="166" cy="146" r="4.5" fill="#c2556e"/><circle cx="182" cy="146" r="4.5" fill="#c2556e"/><circle cx="198" cy="146" r="4.5" fill="#c2556e"/><circle cx="214" cy="146" r="4.5" fill="#c2556e"/><circle cx="230" cy="146" r="4.5" fill="#c2556e"/><circle cx="150" cy="162" r="4.5" fill="#c2556e"/><circle cx="166" cy="162" r="4.5" fill="#c2556e"/><circle cx="182" cy="162" r="4.5" fill="#c2556e"/><circle cx="198" cy="162" r="4.5" fill="#c2556e"/><circle cx="214" cy="162" r="4.5" fill="#c2556e"/><circle cx="230" cy="162" r="4.5" fill="#c2556e"/><circle cx="150" cy="178" r="4.5" fill="#c2556e"/><circle cx="166" cy="178" r="4.5" fill="#c2556e"/><circle cx="182" cy="178" r="4.5" fill="#c2556e"/><circle cx="198" cy="178" r="4.5" fill="#c2556e"/><circle cx="214" cy="178" r="4.5" fill="#c2556e"/><circle cx="230" cy="178" r="4.5" fill="#c2556e"/></g>
+</svg>

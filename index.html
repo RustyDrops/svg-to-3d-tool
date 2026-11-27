@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SVG to 3D Volume Tool</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { background: #1b1e26; color: #eef1f6; font-family: Arial, Helvetica, sans-serif;
+         display: flex; height: 100vh; overflow: hidden; }
+  body.exam { width: 1000px; height: 650px; }
+
+  /* Left control panel (normal mode) */
+  #panel { width: 330px; min-width: 330px; padding: 18px; background: #242833;
+           overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  #panel h1 { font-size: 17px; letter-spacing: .04em; }
+  #panel label { font-size: 12px; color: #b9c0cf; display: block; margin-bottom: 4px; }
+  #panel textarea { width: 100%; height: 150px; background: #171a21; color: #dfe6f2;
+                    border: 1px solid #3a4152; border-radius: 6px; padding: 8px;
+                    font-family: monospace; font-size: 11px; resize: vertical; }
+  #panel input[type="file"] { width: 100%; color: #b9c0cf; font-size: 12px; }
+  #panel select { width: 100%; background: #171a21; color: #dfe6f2; border: 1px solid #3a4152;
+                  border-radius: 6px; padding: 6px; font-size: 13px; }
+  #panel input[type="range"] { width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row label { margin: 0; }
+  button { background: #3f6fb5; color: #fff; border: none; border-radius: 6px;
+           padding: 8px 12px; font-size: 13px; cursor: pointer; flex: 1; }
+  button:hover { background: #4d80c9; }
+  button.secondary { background: #39415a; }
+  button.secondary:hover { background: #47536f; }
+  #stats { font-size: 12.5px; line-height: 1.6; color: #dfe6f2; background: #171a21;
+           border: 1px solid #3a4152; border-radius: 6px; padding: 8px 10px; min-height: 40px; }
+  #warnings { font-size: 12px; line-height: 1.5; color: #f2c879; white-space: pre-wrap; }
+  #errors { font-size: 12px; line-height: 1.5; color: #f28b82; white-space: pre-wrap; }
+  .val { color: #9fc4e8; font-size: 12px; }
+
+  /* Scene builder: primitives, parts list, selected part controls */
+  .prim-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .prim-grid button { padding: 7px 4px; font-size: 12px; }
+  #partsList { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; }
+  .part-item { background: #171a21; border: 1px solid #3a4152; border-radius: 6px;
+               padding: 6px 8px; font-size: 12.5px; cursor: pointer; color: #dfe6f2; }
+  .part-item:hover { border-color: #4d80c9; }
+  .part-item.selected { background: #2c4a73; border-color: #4d80c9; color: #fff; }
+  .part-empty { font-size: 12px; color: #8b95a5; }
+  #panel input[type="color"] { width: 100%; height: 32px; background: #171a21;
+               border: 1px solid #3a4152; border-radius: 6px; padding: 2px; }
+  button:disabled, input:disabled { opacity: .45; cursor: default; }
+
+  /* Flat SVG panel (exam mode only) */
+  #flat { width: 260px; min-width: 260px; padding: 26px 20px; background: #242833;
+          display: none; flex-direction: column; align-items: center; }
+  body.exam #flat { display: flex; }
+  body.exam #panel { display: none; }
+  #flat h2 { font-size: 16px; margin-bottom: 14px; letter-spacing: .04em; }
+  #flat p { font-size: 12.5px; line-height: 1.5; color: #b9c0cf; margin-top: 14px; text-align: center; }
+  #flatSvg svg { width: 200px; height: auto; display: block; }
+
+  /* 3D stage */
+  #stage { flex: 1; position: relative; min-width: 0; }
+  #stage h2 { position: absolute; top: 22px; left: 0; right: 0; text-align: center;
+              font-size: 16px; letter-spacing: .04em; z-index: 2; pointer-events: none; }
+  #labels { position: absolute; bottom: 58px; left: 0; right: 0; display: none; z-index: 2; pointer-events: none; }
+  body.exam #labels { display: flex; }
+  #labels span { flex: 1; text-align: center; font-size: 12px; color: #b9c0cf; font-weight: bold; }
+  canvas { display: block; }
+</style>
+<script>
+  // Capture errors from the very start so exam mode can report them.
+  window.__examErrors = [];
+  window.addEventListener('error', function (e) {
+    window.__examErrors.push(String((e && (e.message || e.error)) || 'unknown error'));
+  });
+  (function () {
+    var origError = console.error.bind(console);
+    console.error = function () {
+      window.__examErrors.push(Array.prototype.map.call(arguments, String).join(' '));
+      origError.apply(null, arguments);
+    };
+  })();
+</script>
+<script type="importmap">
+{ "imports": {
+    "three": "./lib/three.module.js",
+    "three/addons/": "./lib/addons/",
+    "./lib/utils/TextureUtils.js": "./lib/addons/utils/TextureUtils.js"
+} }
+</script>
+</head>
+<body>
+  <div id="flat">
+    <h2>FLAT SVG</h2>
+    <div id="flatSvg"></div>
+    <p id="flatCaption"></p>
+  </div>
+
+  <div id="panel">
+    <h1>SVG TO 3D VOLUME</h1>
+    <div>
+      <label for="fileInput">Load an SVG file</label>
+      <input type="file" id="fileInput" accept=".svg,image/svg+xml">
+    </div>
+    <div>
+      <label for="examSelect">Or load an exam case</label>
+      <select id="examSelect">
+        <option value="">Choose a case</option>
+        <option value="e1">e1 shield emblem</option>
+        <option value="e2">e2 castle gate</option>
+        <option value="e3">e3 ring and keyhole</option>
+        <option value="e4">e4 lettering</option>
+        <option value="e5">e5 wave banner</option>
+        <option value="e6">e6 dragon</option>
+        <option value="e7">e7 snowflake (strokes)</option>
+        <option value="e8">e8 adversarial mix</option>
+      </select>
+    </div>
+    <div>
+      <label for="svgText">SVG markup, or bare path data (a d attribute value)</label>
+      <textarea id="svgText" spellcheck="false" placeholder="Paste SVG markup here, or path data such as M10,10 L90,10 L50,90 Z"></textarea>
+    </div>
+    <div>
+      <label for="depthRange">Depth multiplier: <span class="val" id="depthVal">1.00</span></label>
+      <input type="range" id="depthRange" min="0.25" max="3" step="0.25" value="1">
+    </div>
+    <div class="row">
+      <input type="checkbox" id="bevelCheck" checked>
+      <label for="bevelCheck">Bevel edges</label>
+    </div>
+    <div>
+      <label for="textureSelect">Texture set</label>
+      <select id="textureSelect">
+        <option value="full">Full (procedural textures)</option>
+        <option value="flat">Flat colours</option>
+      </select>
+    </div>
+    <div class="row">
+      <button id="buildBtn">Build</button>
+    </div>
+    <div class="row">
+      <button id="pngBtn" class="secondary">Export PNG</button>
+      <button id="glbBtn" class="secondary">Export GLB</button>
+    </div>
+    <div>
+      <label>Add a primitive shape</label>
+      <div class="prim-grid">
+        <button id="addSphereBtn" class="secondary">Add sphere</button>
+        <button id="addBoxBtn" class="secondary">Add box</button>
+        <button id="addCylinderBtn" class="secondary">Add cylinder</button>
+        <button id="addConeBtn" class="secondary">Add cone</button>
+        <button id="addTorusBtn" class="secondary">Add torus</button>
+      </div>
+    </div>
+    <div class="row">
+      <input type="checkbox" id="gridCheck" checked>
+      <label for="gridCheck">Show ground grid</label>
+    </div>
+    <div>
+      <label>Parts in scene</label>
+      <div id="partsList"><div class="part-empty">No parts yet.</div></div>
+    </div>
+    <div>
+      <label for="partX">Selected part X position: <span class="val" id="partXVal">0.00</span></label>
+      <input type="range" id="partX" min="-3" max="3" step="0.05" value="0">
+    </div>
+    <div>
+      <label for="partY">Selected part Y position: <span class="val" id="partYVal">0.00</span></label>
+      <input type="range" id="partY" min="-3" max="3" step="0.05" value="0">
+    </div>
+    <div>
+      <label for="partRotY">Selected part rotation Y: <span class="val" id="partRotYVal">0</span></label>
+      <input type="range" id="partRotY" min="0" max="360" step="1" value="0">
+    </div>
+    <div>
+      <label for="partScale">Selected part scale: <span class="val" id="partScaleVal">1.00</span></label>
+      <input type="range" id="partScale" min="0.2" max="2.5" step="0.05" value="1">
+    </div>
+    <div>
+      <label for="partColor">Selected part colour</label>
+      <input type="color" id="partColor" value="#8a97a5">
+    </div>
+    <div class="row">
+      <button id="dupPartBtn" class="secondary">Duplicate</button>
+      <button id="delPartBtn" class="secondary">Delete</button>
+    </div>
+    <div>
+      <label>Stats</label>
+      <div id="stats">Nothing built yet.</div>
+    </div>
+    <div id="warnings"></div>
+    <div id="errors"></div>
+  </div>
+
+  <div id="stage">
+    <h2 id="stageTitle" style="display:none">EXTRUDED 3D VOLUME</h2>
+    <div id="labels"><span>turned left</span><span>front</span><span>turned right</span></div>
+  </div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { buildFromSVG } from './src/svg3d.js';
+
+const EXAM_FILES = {
+  e1: 'e1-shield.svg', e2: 'e2-castle-gate.svg', e3: 'e3-ring-keyhole.svg',
+  e4: 'e4-lettering.svg', e5: 'e5-wave-banner.svg', e6: 'e6-dragon.svg',
+  e7: 'e7-snowflake.svg', e8: 'e8-adversarial.svg'
+};
+const EXAM_CAPTIONS = {
+  e1: 'Shield outline plus cross emblem, two fills.',
+  e2: 'Tower with door and window holes, recessed portcullis bars, raised star.',
+  e3: 'A ring and a lock plate with a keyhole. Holes must be see-through.',
+  e4: 'Letters R and A as paths, with counter holes.',
+  e5: 'Banner built from arc and cubic commands, three raised studs.',
+  e6: 'Dragon silhouette with an eye hole, many cubic segments.',
+  e7: 'Snowflake drawn only with stroke lines. Strokes must gain volume.',
+  e8: 'Overlapping circles, one open path, a tiny star, 24 dots.'
+};
+
+const params = new URLSearchParams(location.search);
+const examId = params.get('exam');
+const isExam = !!(examId && EXAM_FILES[examId]);
+
+const stage = document.getElementById('stage');
+const statsEl = document.getElementById('stats');
+const warningsEl = document.getElementById('warnings');
+const errorsEl = document.getElementById('errors');
+const svgTextEl = document.getElementById('svgText');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+stage.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1b1e26);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(3, 4, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0x88aaff, 0.9); rim.position.set(-4, 1, -3); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(0, -1, 4); scene.add(fill);
+
+let camera, controls = null;
+let modelGroup = null;      // the group returned by buildFromSVG
+let lastResult = null;
+let currentName = 'model';
+
+// Scene builder state (normal mode only). Every loaded SVG and every
+// primitive becomes a part under partsRoot, so exports cover the scene.
+const partsRoot = new THREE.Group();
+partsRoot.name = 'partsRoot';
+const parts = [];
+let selectedPartId = null;
+let partSeq = 0;
+let groundGrid = null;
+
+function getPart(id) { return parts.find(p => p.id === id) || null; }
+function selectedPart() { return getPart(selectedPartId); }
+
+function uniquePartName(base) {
+  if (!parts.some(p => p.name === base)) return base;
+  let n = 2;
+  while (parts.some(p => p.name === base + ' ' + n)) n++;
+  return base + ' ' + n;
+}
+
+function addPart(name, group) {
+  const part = { id: ++partSeq, name: name || ('part ' + partSeq), group, materialsCloned: false };
+  parts.push(part);
+  partsRoot.add(group);
+  selectPart(part.id);
+  return part;
+}
+
+function selectPart(id) {
+  selectedPartId = id;
+  refreshPartsList();
+  syncPartControls();
+}
+
+function refreshPartsList() {
+  const list = document.getElementById('partsList');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!parts.length) {
+    const empty = document.createElement('div');
+    empty.className = 'part-empty';
+    empty.textContent = 'No parts yet.';
+    list.appendChild(empty);
+    return;
+  }
+  for (const part of parts) {
+    const item = document.createElement('div');
+    item.className = 'part-item' + (part.id === selectedPartId ? ' selected' : '');
+    item.textContent = part.name;
+    item.dataset.partId = part.id;
+    item.addEventListener('click', () => selectPart(part.id));
+    list.appendChild(item);
+  }
+}
+
+function syncPartControls() {
+  const part = selectedPart();
+  const ids = ['partX', 'partY', 'partRotY', 'partScale', 'partColor', 'dupPartBtn', 'delPartBtn'];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !part;
+  }
+  if (!part) return;
+  const g = part.group;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('partX', g.position.x); setVal('partXVal', g.position.x.toFixed(2));
+  set('partY', g.position.y); setVal('partYVal', g.position.y.toFixed(2));
+  const deg = ((g.rotation.y * 180 / Math.PI) % 360 + 360) % 360;
+  set('partRotY', deg); setVal('partRotYVal', String(Math.round(deg)));
+  set('partScale', g.scale.x); setVal('partScaleVal', g.scale.x.toFixed(2));
+  let colour = null;
+  g.traverse(o => {
+    if (colour === null && o.isMesh && o.material && !Array.isArray(o.material) && o.material.color) {
+      colour = '#' + o.material.color.getHexString();
+    }
+  });
+  if (colour) set('partColor', colour);
+}
+
+// Clone a part's materials once so colour edits never leak into other
+// parts that happen to share a material instance.
+function ensurePartMaterials(part) {
+  if (part.materialsCloned) return;
+  part.group.traverse(o => {
+    if (!o.isMesh || !o.material) return;
+    o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone();
+  });
+  part.materialsCloned = true;
+}
+
+function applyPartColour(part, hex) {
+  ensurePartMaterials(part);
+  const colour = new THREE.Color(hex);
+  part.group.traverse(o => {
+    if (!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) if (m.color) m.color.copy(colour);
+  });
+}
+
+function addPrimitive(kind) {
+  let geo = null, base = '';
+  switch (kind) {
+    case 'sphere': geo = new THREE.SphereGeometry(0.35, 32, 24); base = 'Sphere'; break;
+    case 'box': geo = new THREE.BoxGeometry(0.7, 0.7, 0.7); base = 'Box'; break;
+    case 'cylinder': geo = new THREE.CylinderGeometry(0.3, 0.3, 0.75, 32); base = 'Cylinder'; break;
+    case 'cone': geo = new THREE.ConeGeometry(0.4, 0.8, 32); base = 'Cone'; break;
+    case 'torus': geo = new THREE.TorusGeometry(0.28, 0.12, 20, 40); base = 'Torus'; break;
+  }
+  if (!geo) return;
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    color: 0x8a97a5, metalness: 0.15, roughness: 0.55
+  }));
+  const group = new THREE.Group();
+  group.add(mesh);
+  addPart(uniquePartName(base), group);
+}
+
+function disposeObject(root) {
+  root.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        for (const k of ['map', 'bumpMap']) if (m[k]) m[k].dispose();
+        m.dispose();
+      }
+    }
+  });
+}
+
+function clearModel() {
+  if (modelGroup) {
+    scene.remove(modelGroup);
+    // Exam mode added clones, not this group; remove any clone groups too.
+    for (const child of [...scene.children]) {
+      if (child.userData && child.userData.isModelCopy) { scene.remove(child); disposeObject(child); }
+    }
+    disposeObject(modelGroup);
+    modelGroup = null;
+  }
+}
+
+function currentOptions() {
+  return {
+    depthMultiplier: parseFloat(document.getElementById('depthRange').value) || 1,
+    bevel: document.getElementById('bevelCheck').checked,
+    flatTextures: document.getElementById('textureSelect').value === 'flat'
+  };
+}
+
+// Accept full SVG markup, a lone element, or bare path data.
+function normaliseInput(text) {
+  const t = text.trim();
+  if (!t) return t;
+  if (/^[MLHVCSQTAZmlhvcsqtaz]/.test(t) && !t.startsWith('<')) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><path d="' +
+      t.replace(/"/g, "'") + '"/></svg>';
+  }
+  if (t.startsWith('<') && !/<svg[\s>]/i.test(t.slice(0, 200))) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">' + t + '</svg>';
+  }
+  return t;
+}
+
+function showResult(result) {
+  const s = result.stats;
+  statsEl.textContent =
+    'Elements: ' + s.elements + '  Meshes: ' + s.meshes +
+    '  Triangles: ' + s.triangles + '  NaN vertices: ' + s.nanVertices;
+  warningsEl.textContent = result.warnings.length
+    ? 'Warnings:\n' + result.warnings.map(w => '- ' + w).join('\n')
+    : '';
+}
+
+function build(text, name) {
+  if (isExam) clearModel();
+  errorsEl.textContent = '';
+  const result = buildFromSVG(normaliseInput(text), currentOptions());
+  lastResult = result;
+  modelGroup = result.group;
+  currentName = name || 'model';
+  showResult(result);
+  if (isExam) {
+    // Three fixed angled copies on an amber backdrop, like the baselines,
+    // so real holes show the backdrop colour through them.
+    const backdrop = new THREE.Mesh(
+      new THREE.PlaneGeometry(12, 7),
+      new THREE.MeshBasicMaterial({ color: 0xe8a33d })
+    );
+    backdrop.position.set(0, 0.1, -2.4);
+    backdrop.userData.isModelCopy = true;
+    scene.add(backdrop);
+    [[-2.55, -0.62], [0, 0], [2.55, 0.62]].forEach(([x, ry]) => {
+      const copy = modelGroup.clone();
+      copy.position.x = x;
+      copy.rotation.y = ry;
+      copy.userData.isModelCopy = true;
+      scene.add(copy);
+    });
+  } else {
+    // Normal mode: each build becomes a new part in the scene.
+    addPart(uniquePartName(currentName), modelGroup);
+  }
+  renderer.render(scene, camera);
+  return result;
+}
+
+function download(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+async function loadExam(id) {
+  const res = await fetch('exam/' + EXAM_FILES[id]);
+  if (!res.ok) throw new Error('Could not fetch exam/' + EXAM_FILES[id] + ' (HTTP ' + res.status + ')');
+  return res.text();
+}
+
+async function main() {
+  if (isExam) {
+    document.body.classList.add('exam');
+    document.getElementById('stageTitle').style.display = 'block';
+    renderer.setSize(740, 650);
+    camera = new THREE.PerspectiveCamera(38, 740 / 650, 0.1, 100);
+    camera.position.set(0, 0.25, 10);
+    camera.lookAt(0, 0, 0);
+    try {
+      const text = await loadExam(examId);
+      document.getElementById('flatSvg').innerHTML = text;
+      document.getElementById('flatCaption').textContent =
+        examId.toUpperCase() + ': ' + (EXAM_CAPTIONS[examId] || '');
+      const result = build(text, examId);
+      renderer.render(scene, camera);
+      const box = new THREE.Box3().setFromObject(modelGroup);
+      const bboxFinite = [box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z]
+        .every(Number.isFinite);
+      window.__examResult = {
+        meshes: result.stats.meshes,
+        triangles: result.stats.triangles,
+        warnings: result.warnings.slice(),
+        errors: window.__examErrors.slice(),
+        bboxFinite
+      };
+    } catch (err) {
+      window.__examErrors.push(String(err && err.message ? err.message : err));
+      window.__examResult = {
+        meshes: 0, triangles: 0, warnings: [],
+        errors: window.__examErrors.slice(), bboxFinite: false
+      };
+    }
+    window.__ready = true;
+    return;
+  }
+
+  // Normal interactive mode.
+  const w = stage.clientWidth || 800, h = stage.clientHeight || 600;
+  renderer.setSize(w, h);
+  camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 100);
+  camera.position.set(2.6, 1.7, 4.4);
+  camera.lookAt(0, 0, 0);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  // Scene builder: parts root plus a ground grid under the scene.
+  scene.add(partsRoot);
+  groundGrid = new THREE.GridHelper(8, 16, 0x4a5468, 0x333a48);
+  groundGrid.position.y = -1.7;
+  scene.add(groundGrid);
+  refreshPartsList();
+  syncPartControls();
+
+  window.addEventListener('resize', () => {
+    const nw = stage.clientWidth, nh = stage.clientHeight;
+    if (!nw || !nh) return;
+    renderer.setSize(nw, nh);
+    camera.aspect = nw / nh;
+    camera.updateProjectionMatrix();
+  });
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  })();
+
+  document.getElementById('depthRange').addEventListener('input', e => {
+    document.getElementById('depthVal').textContent = parseFloat(e.target.value).toFixed(2);
+  });
+  document.getElementById('fileInput').addEventListener('change', async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    svgTextEl.value = text;
+    build(text, file.name.replace(/\.svg$/i, ''));
+  });
+  document.getElementById('examSelect').addEventListener('change', async e => {
+    if (!e.target.value) return;
+    try {
+      const text = await loadExam(e.target.value);
+      svgTextEl.value = text;
+      build(text, e.target.value);
+    } catch (err) {
+      errorsEl.textContent = String(err && err.message ? err.message : err);
+    }
+  });
+  document.getElementById('buildBtn').addEventListener('click', () => {
+    if (!svgTextEl.value.trim()) { errorsEl.textContent = 'Paste SVG markup or path data first.'; return; }
+    build(svgTextEl.value, currentName);
+  });
+  document.getElementById('pngBtn').addEventListener('click', () => {
+    if (!parts.length) return;
+    renderer.render(scene, camera);
+    renderer.domElement.toBlob(blob => { if (blob) download(blob, 'scene.png'); }, 'image/png');
+  });
+  document.getElementById('glbBtn').addEventListener('click', () => {
+    if (!parts.length) return;
+    new GLTFExporter().parse(
+      partsRoot,
+      res => download(new Blob([res], { type: 'model/gltf-binary' }), 'scene.glb'),
+      err => { errorsEl.textContent = 'GLB export failed: ' + (err && err.message ? err.message : err); },
+      { binary: true }
+    );
+  });
+
+  // Scene builder wiring: primitives, grid toggle, part transforms.
+  document.getElementById('addSphereBtn').addEventListener('click', () => addPrimitive('sphere'));
+  document.getElementById('addBoxBtn').addEventListener('click', () => addPrimitive('box'));
+  document.getElementById('addCylinderBtn').addEventListener('click', () => addPrimitive('cylinder'));
+  document.getElementById('addConeBtn').addEventListener('click', () => addPrimitive('cone'));
+  document.getElementById('addTorusBtn').addEventListener('click', () => addPrimitive('torus'));
+  document.getElementById('gridCheck').addEventListener('change', e => {
+    if (groundGrid) groundGrid.visible = e.target.checked;
+  });
+  const bindSlider = (id, valId, apply, format) => {
+    document.getElementById(id).addEventListener('input', e => {
+      const part = selectedPart();
+      if (!part) return;
+      const v = parseFloat(e.target.value);
+      apply(part.group, v);
+      document.getElementById(valId).textContent = format(v);
+    });
+  };
+  bindSlider('partX', 'partXVal', (g, v) => { g.position.x = v; }, v => v.toFixed(2));
+  bindSlider('partY', 'partYVal', (g, v) => { g.position.y = v; }, v => v.toFixed(2));
+  bindSlider('partRotY', 'partRotYVal', (g, v) => { g.rotation.y = v * Math.PI / 180; }, v => String(Math.round(v)));
+  bindSlider('partScale', 'partScaleVal', (g, v) => { g.scale.setScalar(v); }, v => v.toFixed(2));
+  document.getElementById('partColor').addEventListener('input', e => {
+    const part = selectedPart();
+    if (part) applyPartColour(part, e.target.value);
+  });
+  document.getElementById('dupPartBtn').addEventListener('click', () => {
+    const part = selectedPart();
+    if (!part) return;
+    const copy = part.group.clone(true);
+    copy.traverse(o => {
+      if (!o.isMesh) return;
+      if (o.geometry) o.geometry = o.geometry.clone();
+      if (o.material) o.material = Array.isArray(o.material) ? o.material.map(m => m.clone()) : o.material.clone();
+    });
+    copy.position.x = Math.min(3, part.group.position.x + 0.5);
+    const np = addPart(uniquePartName(part.name + ' copy'), copy);
+    np.materialsCloned = true;
+  });
+  document.getElementById('delPartBtn').addEventListener('click', () => {
+    const part = selectedPart();
+    if (!part) return;
+    partsRoot.remove(part.group);
+    disposeObject(part.group);
+    parts.splice(parts.indexOf(part), 1);
+    selectedPartId = parts.length ? parts[parts.length - 1].id : null;
+    refreshPartsList();
+    syncPartControls();
+  });
+
+  // Show something on first load: exam case e1.
+  try {
+    const text = await loadExam('e1');
+    svgTextEl.value = text;
+    build(text, 'e1');
+  } catch (err) {
+    errorsEl.textContent = 'Could not auto-load exam/e1-shield.svg: ' + (err && err.message ? err.message : err);
+  }
+  window.__ready = true;
+}
+
+main().catch(err => {
+  window.__examErrors.push(String(err && err.message ? err.message : err));
+  if (isExam && !window.__examResult) {
+    window.__examResult = { meshes: 0, triangles: 0, warnings: [], errors: window.__examErrors.slice(), bboxFinite: false };
+  }
+  window.__ready = true;
+});
+</script>
+</body>
+</html>

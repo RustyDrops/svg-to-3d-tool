@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 240">
+  <!-- sails -->
+  <path data-depth="12" data-material="steel" fill="#e8e2d2" d="M148,28 C142,60 140,92 144,120 L186,120 C178,84 166,52 148,28 Z"/>
+  <path data-depth="12" data-material="steel" fill="#ddd5c0" d="M196,48 C192,74 192,98 196,118 L226,118 C220,88 210,64 196,48 Z"/>
+  <path data-depth="12" data-material="steel" fill="#ddd5c0" d="M138,44 C122,66 112,92 108,118 L140,118 C138,90 138,66 138,44 Z"/>
+  <!-- masts -->
+  <path data-depth="16" data-material="wood" fill="#6d4525" d="M146,20 L152,20 L152,150 L146,150 Z M192,40 L197,40 L197,150 L192,150 Z"/>
+  <!-- flag -->
+  <path data-depth="20" data-material="gem" data-role="raised" fill="#c22e3a" d="M152,22 C162,18 170,20 178,24 C170,29 162,30 152,28 Z"/>
+  <!-- rigging, thin strokes -->
+  <g data-depth="8" stroke="#3a3f46" stroke-width="2" fill="none">
+    <line x1="149" y1="24" x2="96" y2="128"/><line x1="149" y1="24" x2="238" y2="126"/>
+    <line x1="194" y1="44" x2="238" y2="126"/><line x1="194" y1="44" x2="149" y2="126"/>
+    <line x1="149" y1="70" x2="104" y2="128"/><line x1="149" y1="70" x2="232" y2="128"/>
+  </g>
+  <!-- hull with portholes -->
+  <path data-depth="26" data-material="wood" fill="#7c4f24" fill-rule="evenodd" d="M62,138 L238,138 C232,168 214,192 186,204 L108,204 C82,192 68,168 62,138 Z M96,156 A7,7 0 1 1 95.9,156 Z M132,160 A7,7 0 1 1 131.9,160 Z M168,160 A7,7 0 1 1 167.9,160 Z M202,156 A7,7 0 1 1 201.9,156 Z"/>
+  <!-- hull stripe and bow detail -->
+  <path data-depth="30" data-material="gold" data-role="raised" fill="#d9b45b" d="M64,138 L236,138 L234,148 L66,148 Z"/>
+  <path data-depth="30" data-material="copper" data-role="raised" fill="#b87333" d="M56,128 C62,124 70,126 74,132 L66,142 C60,140 56,134 56,128 Z"/>
+  <!-- waves as strokes -->
+  <g data-depth="8" stroke="#4a7fa6" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M30,216 C44,208 58,208 72,216 C86,224 100,224 114,216"/>
+    <path d="M120,224 C134,216 148,216 162,224 C176,232 190,232 204,224"/>
+    <path d="M196,214 C210,206 224,206 238,214 C252,222 262,222 272,216"/>
+  </g>
+</svg>

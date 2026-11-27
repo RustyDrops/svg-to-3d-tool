@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200">
+  <!-- big gem orb as a sphere, small squashed ellipse orb beside it -->
+  <circle data-mode="sphere" data-depth="90" data-material="gem" cx="88" cy="100" r="62" fill="#7a4fd0"/>
+  <ellipse data-mode="sphere" data-depth="34" data-material="gold" cx="186" cy="122" rx="40" ry="26" fill="#d9b45b"/>
+  <!-- flat extruded base plinth for contrast -->
+  <path data-depth="14" data-material="stone" fill="#7a8699" d="M20,178 L220,178 L220,194 L20,194 Z"/>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160">
+  <!-- ornate key: bow is a ring with four small pierced holes, shaft, collar rings, two teeth -->
+  <path data-depth="20" data-material="gold" fill="#d9b45b" fill-rule="evenodd" d="M52,32 A48,48 0 1 1 51.9,32 Z M52,56 A24,24 0 1 0 52.1,56 Z M52,40 A5,5 0 1 1 51.9,40 Z M36,72 A5,5 0 1 1 35.9,72 Z M68,72 A5,5 0 1 1 67.9,72 Z M52,102 A5,5 0 1 1 51.9,102 Z"/>
+  <!-- shaft -->
+  <path data-depth="18" data-material="gold" fill="#d9b45b" d="M96,72 L252,72 L252,88 L96,88 Z"/>
+  <!-- collar rings raised -->
+  <path data-depth="28" data-material="copper" data-role="raised" fill="#b87333" d="M118,64 L132,64 L132,96 L118,96 Z M142,64 L150,64 L150,96 L142,96 Z"/>
+  <!-- teeth -->
+  <path data-depth="18" data-material="gold" fill="#d9b45b" d="M214,88 L228,88 L228,116 L214,116 Z M236,88 L252,88 L252,106 L236,106 Z"/>
+  <!-- engraved swirl on the shaft, recessed stroke -->
+  <g data-depth="8" data-role="recessed" stroke="#8a6d1f" stroke-width="3" fill="none">
+    <path d="M160,80 C168,68 182,68 184,78 C186,87 176,90 172,84 C169,79 174,74 178,77"/>
+    <path d="M192,80 C200,68 214,68 216,78 C218,87 208,90 204,84 C201,79 206,74 210,77"/>
+  </g>
+  <!-- hanging tag with perforated border and a star cutout -->
+  <path data-depth="12" data-material="copper" fill="#b87333" fill-rule="evenodd" d="M262,118 L296,118 L296,152 L262,152 Z M279,124 L281.2,130.4 L288,130.6 L282.6,134.8 L284.4,141.4 L279,137.6 L273.6,141.4 L275.4,134.8 L270,130.6 L276.8,130.4 Z M270.2,124 A2.2,2.2 0 1 1 270.1,124 Z M292.2,124 A2.2,2.2 0 1 1 292.1,124 Z M270.2,146 A2.2,2.2 0 1 1 270.1,146 Z M292.2,146 A2.2,2.2 0 1 1 292.1,146 Z"/>
+</svg>
